@@ -1,0 +1,82 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Thread Lock Example with SocketIO</title>
+        <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.3/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+  <h3>{{staging_jenkins}}</h3>
+  <p><input type="text" name="environmentInput"  id="environmentInput" value="{{staging_jenkins}}" placeholder="selected Environment"></p>
+
+    <button id="taskButton" onclick="handleButtonClick()">Perform Task</button>
+    <p id="result"></p>
+    <p><input type="text" name="envrun"  id="envrun"  placeholder="selected Environment"></p>
+
+    <script>
+
+        // Function to handle button click inside iframe
+
+        function handleButtonClick() {
+            var environmentInput = document.getElementById('environmentInput').value;
+            window.socket.emit('button_click', { environmentInput: environmentInput , button_clicked: true});
+            document.getElementById('envrun').value= document.getElementById('environmentInput').value 
+
+            // Perform an AJAX request to get the lock status 
+            
+            $.ajax({
+                url: "/perform_task",
+                type: "POST",
+                data: { environmentInput: environmentInput },
+                success: function(response) {
+                    $("#result").text(response.message);
+                    window.socket.emit('button_click', { environmentInput: environmentInput, button_clicked: false});
+
+                    document.getElementById('envrun').value= ""
+                },
+                error: function(error) {
+                    $("#result").text("Error: " + error.responseText);
+                },
+                complete: function() {
+                    // Request the lock status after task completion
+                    document.getElementById('envrun').value= ""
+                }
+            });
+            }
+          
+
+        // Listen for messages from the parent window
+
+        window.addEventListener('message', function (event) {
+            var lockedEnvironment = event.data.environmentInput;
+            var displayedEnvironment = document.querySelector('h3').textContent;
+            // console.log("hmm",event.data.environmentInput,"displayedEnvironment",displayedEnvironment,"lockedEnvironment",lockedEnvironment);
+        if (event.data.type === 'lock') {
+
+            // var lockedEnvironment = event.data.environmentInput;
+
+            if (lockedEnvironment === displayedEnvironment) {
+                console.log("hi there", displayedEnvironment);
+                $("#result").text("Operation is locked. Please wait...");
+                $("#taskButton").prop("disabled", true);
+            }
+        } else if (event.data.type === 'unlock' && lockedEnvironment === displayedEnvironment) {
+            console.log("closing", displayedEnvironment);
+            $("#result").text("hattt");
+            $("#taskButton").prop("disabled", false);
+        }
+     
+    });
+    </script>
+</body>
+</html>

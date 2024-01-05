@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thread Lock Example with SocketIO</title>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.3/socket.io.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+    <div class="p-4" style="padding: 0px !important;">
+        <div class="dropdown" id="selectionbox1" >
+          <lable>Select Environment: </lable>
+          <button class="btn btn-primary dropdown-toggle"  id="dropdownButton"  onclick="$('#dropdownOptions').css('display', 'block');"
+            data-toggle="dropdown" style="width: 170px;">Click to select Options</button>
+    
+    <ul class="dropdown-menu" id="dropdownOptions" >
+        <li data-category="cloudconfig"><a value="value">value</a></li>
+        <li data-category="cloudconfig"><a value="Staging">current:Staging</a></li>
+        <li data-category="cloudconfig"><a value="QA">QA</a></li>
+
+      </ul>
+      </div></div>
+      <button type="submit"  class="btn btn-primary" onclick="submitForm()"> Submit</button>
+
+      <p><input type="text" name="environmentInput"  id="environmentInput" placeholder="selected Environment"></p>
+
+      <div class="p-4"  style="padding: 0px !important;" id="inline" >
+        <div class="embed-responsive embed-responsive-16by9">
+          <iframe name="frame_target" id="responsehtmldata" class="embed-responsive-item"  allowfullscreen></iframe>
+        </div>
+      </div>
+    <script>
+        function initializeSocket() {
+            
+            var socket = io.connect('http://' + document.domain + ':' + location.port);
+            socket.on('button_clicked', function(data) {
+                var environmentInput = data.environmentInput;
+
+                if (data.clicked) {
+                    $("#responsehtmldata")[0].contentWindow.postMessage({ type: 'lock',  environmentInput: environmentInput }, '*');
+                    console.log("Locking operation for environment:", environmentInput);
+
+                } else {
+                    $("#responsehtmldata")[0].contentWindow.postMessage({ type: 'unlock', environmentInput: environmentInput }, '*');
+                    console.log("Locking operation for environment:", environmentInput);
+
+                }
+            });
+
+            // Expose the socket to the iframe window
+            document.getElementById('responsehtmldata').contentWindow.socket = socket;
+        }
+        $(document).ready(function() {
+    // Add click event listener to the submit button
+  
+    $('#dropdownOptions li a').on('click', function() {
+    // show selected value in button
+    var selectedValue = $(this).attr('value');
+    document.getElementById('environmentInput').value = selectedValue;
+    $('#dropdownButton').text($(this).text());
+    $('#dropdownOptions li a').removeClass('active');
+    $(this).addClass('active');
+  $('#dropdownOptions').css('display', 'none')
+
+});
+  });
+
+  function submitForm() {
+        var environmentInput = document.getElementById('environmentInput').value;
+        console.log("environmentInput",environmentInput);
+            $.ajax({
+                url: "/iframe_content",
+                type: "POST",
+                data: {environmentInput: environmentInput},
+                success: function (response) {
+                    // console.log("res",response)   
+                    $('#responsehtmldata').attr('srcdoc', response);
+                },
+                error: function (error) {
+                    console.log("Error:", error);
+                }
+            });
+        }
+
+    </script>
+
+      <script>
+        document.getElementById('responsehtmldata').onload = function() {
+            initializeSocket();
+        };
+    </script>
+</body>
+</html>
